@@ -11,6 +11,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -20,14 +22,14 @@ public class AIService {
 
     private static final Logger log = LoggerFactory.getLogger(AIService.class);
 
-    @Value("${mistral.api-key}")
-    private String apiKey;
+    @Value("${gemini.api-key:}")
+    private String geminiApiKey;
 
-    @Value("${mistral.model:mistral-small-latest}")
-    private String model;
+    @Value("${gemini.model:gemini-1.5-flash}")
+    private String geminiModel;
 
-    @Value("${mistral.api-url:https://api.mistral.ai/v1/chat/completions}")
-    private String apiUrl;
+    @Value("${gemini.api-url:https://generativelanguage.googleapis.com/v1beta/models}")
+    private String geminiApiUrl;
 
     private static final MediaType JSON_MEDIA = MediaType.get("application/json; charset=utf-8");
 
@@ -39,18 +41,27 @@ public class AIService {
             .build();
 
     public PaperResponse generatePaper(String pageTitle, String cleanedContent) throws Exception {
-        if (apiKey == null || apiKey.isBlank() || apiKey.startsWith("YOUR_")) {
-            log.warn("No real Mistral API key detected — returning mock paper.");
+        if (!isRealKey(geminiApiKey)) {
+            log.warn("No real Gemini API key detected — returning mock paper.");
             return mockPaper(pageTitle);
         }
-        log.info("Calling Mistral AI (model={}) for: {}", model, pageTitle);
+
+        String prompt = buildPrompt(pageTitle, cleanedContent);
+
+        log.info("Calling Gemini (model={}) for: {}", geminiModel, pageTitle);
         try {
-            String responseJson = callMistral(buildPrompt(pageTitle, cleanedContent));
+            String responseJson = callGemini(prompt, geminiApiKey, geminiModel);
             return parsePaperResponse(responseJson, pageTitle);
-        } catch (Exception e) {
-            log.error("Mistral call failed, returning mock paper. Cause: {}", e.getMessage());
-            return mockPaper(pageTitle);
+        } catch (Exception geminiEx) {
+            log.error("Gemini call failed: {}", geminiEx.getMessage());
         }
+
+        log.error("Gemini generation failed, returning mock paper.");
+        return mockPaper(pageTitle);
+    }
+
+    private boolean isRealKey(String key) {
+        return key != null && !key.isBlank() && !key.startsWith("YOUR_");
     }
 
     private String buildPrompt(String title, String content) {
@@ -66,18 +77,20 @@ public class AIService {
                 """.formatted(title, content);
     }
 
-    private String callMistral(String userMessage) throws Exception {
+    private String callGemini(String userMessage, String apiKey, String model) throws Exception {
         ObjectNode root = objectMapper.createObjectNode();
-        root.put("model", model);
-        root.put("temperature", 0.7);
-        ArrayNode messages = root.putArray("messages");
-        ObjectNode msg = messages.addObject();
-        msg.put("role", "user");
-        msg.put("content", userMessage);
+        ArrayNode contents = root.putArray("contents");
+        ObjectNode contentObj = contents.addObject();
+        ArrayNode parts = contentObj.putArray("parts");
+        parts.addObject().put("text", userMessage);
+        root.putObject("generationConfig").put("temperature", 0.7);
+
+        String baseUrl = geminiApiUrl.endsWith("/") ? geminiApiUrl.substring(0, geminiApiUrl.length() - 1) : geminiApiUrl;
+        String requestUrl = baseUrl + "/" + model + ":generateContent?key=" +
+                URLEncoder.encode(apiKey, StandardCharsets.UTF_8);
 
         Request request = new Request.Builder()
-                .url(apiUrl)
-                .header("Authorization", "Bearer " + apiKey)
+                .url(requestUrl)
                 .header("Content-Type", "application/json")
                 .post(RequestBody.create(objectMapper.writeValueAsString(root), JSON_MEDIA))
                 .build();
@@ -85,19 +98,28 @@ public class AIService {
         try (Response response = httpClient.newCall(request).execute()) {
             if (!response.isSuccessful()) {
                 String errorBody = response.body() != null ? response.body().string() : "no body";
-                throw new RuntimeException("Mistral API error " + response.code() + ": " + errorBody);
+                throw new RuntimeException("Gemini API error " + response.code() + ": " + errorBody);
             }
             return response.body().string();
         }
     }
 
-    private PaperResponse parsePaperResponse(String mistralJson, String fallbackTitle) {
+    private PaperResponse parsePaperResponse(String providerJson, String fallbackTitle) {
         try {
-            JsonNode root = objectMapper.readTree(mistralJson);
-            String content = root.path("choices").get(0).path("message").path("content").asText();
+            JsonNode root = objectMapper.readTree(providerJson);
+            String content = extractAssistantContent(root);
+            if (content == null || content.isBlank()) {
+                throw new RuntimeException("Provider response content was empty");
+            }
             content = content.strip();
             if (content.startsWith("```")) {
                 content = content.replaceAll("(?s)```json\\s*", "").replaceAll("```", "").strip();
+            }
+            int firstBrace = content.indexOf('{');
+            int lastBrace = content.lastIndexOf('}');
+            if (!(content.startsWith("{") && content.endsWith("}")) &&
+                    firstBrace >= 0 && lastBrace > firstBrace) {
+                content = content.substring(firstBrace, lastBrace + 1).trim();
             }
             JsonNode paper = objectMapper.readTree(content);
             List<String> refs = new ArrayList<>();
@@ -112,9 +134,33 @@ public class AIService {
                     paper.path("conclusion").asText(""),
                     refs);
         } catch (Exception e) {
-            log.error("Failed to parse Mistral response, falling back to mock", e);
+            log.error("Failed to parse provider response, falling back to mock", e);
             return mockPaper(fallbackTitle);
         }
+    }
+
+    private String extractAssistantContent(JsonNode root) {
+        JsonNode choices = root.path("choices");
+        if (choices.isArray() && !choices.isEmpty()) {
+            return choices.get(0).path("message").path("content").asText("");
+        }
+
+        JsonNode candidates = root.path("candidates");
+        if (candidates.isArray() && !candidates.isEmpty()) {
+            JsonNode parts = candidates.get(0).path("content").path("parts");
+            if (parts.isArray()) {
+                StringBuilder text = new StringBuilder();
+                for (JsonNode part : parts) {
+                    String partText = part.path("text").asText("");
+                    if (!partText.isBlank()) {
+                        if (!text.isEmpty()) text.append('\n');
+                        text.append(partText);
+                    }
+                }
+                return text.toString();
+            }
+        }
+        return "";
     }
 
     private PaperResponse mockPaper(String title) {

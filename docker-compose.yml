@@ -26,7 +26,8 @@ services:
       DB_URL: jdbc:mysql://mysql:3306/link2paper?useSSL=false&serverTimezone=UTC
       DB_USER: root
       DB_PASSWORD: root
-      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-1.5-flash}
     depends_on:
       mysql:
         condition: service_healthy
