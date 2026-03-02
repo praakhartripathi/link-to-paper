@@ -14,14 +14,20 @@ public class CorsConfig {
             @Override
             public void addCorsMappings(CorsRegistry registry) {
                 registry.addMapping("/api/**")
-                        .allowedOrigins(
-                                "http://localhost:5173",  // Vite dev
-                                "http://localhost:3000",  // CRA / other
-                                "http://localhost:4173"   // Vite preview
+                        // allowedOriginPatterns supports wildcards and works with
+                        // any Vite dev port (5173, 5174, etc.) and production domains
+                        .allowedOriginPatterns(
+                                "http://localhost:*",
+                                "https://*.onrender.com",
+                                "https://*.vercel.app"
                         )
-                        .allowedMethods("GET", "POST", "OPTIONS")
-                        .allowedHeaders("*");
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedHeaders("*")
+                        // Expose headers that JS needs to read for the PDF download
+                        .exposedHeaders("Content-Disposition", "Content-Length", "Content-Type")
+                        .maxAge(3600);
             }
         };
     }
 }
+
