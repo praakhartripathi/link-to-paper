@@ -105,6 +105,11 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
         </dependency>
+        <!-- Required for MySQL 8.0 support in Flyway 9.x+ -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+        </dependency>
 
         <!-- Bean Validation -->
         <dependency>
