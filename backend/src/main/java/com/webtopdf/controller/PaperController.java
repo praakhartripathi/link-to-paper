@@ -3,10 +3,12 @@ package com.webtopdf.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.webtopdf.dto.PaperRequest;
 import com.webtopdf.dto.PaperResponse;
+import com.webtopdf.dto.ScrapedPage;
 import com.webtopdf.model.Paper;
 import com.webtopdf.repository.PaperRepository;
 import com.webtopdf.service.AIService;
 import com.webtopdf.service.ContentCleanerService;
+import com.webtopdf.service.HtmlParsingService;
 import com.webtopdf.service.PdfGeneratorService;
 import com.webtopdf.service.WebScraperService;
 import org.slf4j.Logger;
@@ -24,6 +26,7 @@ public class PaperController {
     private static final Logger log = LoggerFactory.getLogger(PaperController.class);
 
     private final WebScraperService     scraperService;
+    private final HtmlParsingService    htmlParsingService;
     private final ContentCleanerService cleanerService;
     private final AIService             aiService;
     private final PdfGeneratorService   pdfGeneratorService;
@@ -31,12 +34,14 @@ public class PaperController {
     private final ObjectMapper          objectMapper;
 
     public PaperController(WebScraperService scraperService,
+                           HtmlParsingService htmlParsingService,
                            ContentCleanerService cleanerService,
                            AIService aiService,
                            PdfGeneratorService pdfGeneratorService,
                            PaperRepository paperRepository,
                            ObjectMapper objectMapper) {
         this.scraperService     = scraperService;
+        this.htmlParsingService = htmlParsingService;
         this.cleanerService     = cleanerService;
         this.aiService          = aiService;
         this.pdfGeneratorService = pdfGeneratorService;
@@ -48,10 +53,14 @@ public class PaperController {
     public ResponseEntity<byte[]> generatePaper(@RequestBody PaperRequest request) {
         log.info("Received request to generate paper for URL: {}", request.url());
         try {
-            String[] scraped      = scraperService.scrape(request.url());
-            String pageTitle      = scraped[0];
-            String rawBody        = scraped[1];
-            String cleanedContent = cleanerService.clean(rawBody);
+            ScrapedPage scraped   = scraperService.scrape(request.url());
+            String pageTitle      = scraped.title();
+            String parsedHtmlText = htmlParsingService.parse(scraped.html());
+            String cleanedContent = cleanerService.clean(parsedHtmlText);
+            if (cleanedContent.isBlank()) {
+                log.warn("Cleaner produced empty content. Falling back to parsed HTML text.");
+                cleanedContent = parsedHtmlText;
+            }
             PaperResponse paper   = aiService.generatePaper(pageTitle, cleanedContent);
             byte[] pdfBytes       = pdfGeneratorService.generate(paper);
 

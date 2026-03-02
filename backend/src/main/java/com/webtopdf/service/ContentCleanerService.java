@@ -26,10 +26,10 @@ public class ContentCleanerService {
 
     public String clean(String rawText) {
         log.debug("Cleaning content, raw length: {}", rawText.length());
-        String cleaned = Arrays.stream(rawText.split("\\.\\s+|\n"))
+        String cleaned = Arrays.stream(rawText.split("\n"))
                 .map(String::trim)
                 .filter(line -> !line.isBlank())
-                .filter(line -> line.split("\\s+").length >= MIN_LINE_WORDS)
+                .filter(line -> isUsefulLine(line))
                 .filter(line -> {
                     String lower = line.toLowerCase();
                     return NOISE_PHRASES.stream().noneMatch(lower::contains);
@@ -42,5 +42,11 @@ public class ContentCleanerService {
         }
         log.debug("Cleaned content length: {}", cleaned.length());
         return cleaned;
+    }
+
+    private boolean isUsefulLine(String line) {
+        if (line.endsWith(":")) return true;
+        if (line.startsWith("- ")) return true;
+        return line.split("\\s+").length >= MIN_LINE_WORDS;
     }
 }

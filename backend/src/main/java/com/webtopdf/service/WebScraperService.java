@@ -1,5 +1,6 @@
 package com.webtopdf.service;
 
+import com.webtopdf.dto.ScrapedPage;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.slf4j.Logger;
@@ -15,15 +16,15 @@ public class WebScraperService {
     @Value("${scraper.timeout-ms:10000}")
     private int timeoutMs;
 
-    public String[] scrape(String url) throws Exception {
+    public ScrapedPage scrape(String url) throws Exception {
         log.info("Scraping URL: {}", url);
         Document doc = Jsoup.connect(url)
                 .userAgent("Mozilla/5.0 (compatible; WebToPdf/1.0)")
                 .timeout(timeoutMs)
                 .get();
-        String title    = doc.title();
-        String bodyText = doc.body().text();
-        log.debug("Scraped title: '{}', body chars: {}", title, bodyText.length());
-        return new String[]{title, bodyText};
+        String title = doc.title();
+        String html = doc.html();
+        log.debug("Scraped title: '{}', html chars: {}", title, html.length());
+        return new ScrapedPage(title, html);
     }
 }
