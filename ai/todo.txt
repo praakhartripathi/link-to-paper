@@ -1,0 +1,162 @@
+PROJECT IDEA: WEBSITE LINK → TECHNICAL PAPER GENERATOR
+
+OVERVIEW
+A web application where a user pastes a website URL, and the system converts
+the webpage content into a structured technical/research paper automatically
+using AI.
+
+--------------------------------------------------
+
+CORE FLOW
+
+1. User pastes website URL
+2. Backend fetches webpage content
+3. HTML is cleaned (remove ads, navbar, footer)
+4. AI processes the content
+5. Content is converted into technical paper format
+6. System generates downloadable PDF/DOCX
+
+--------------------------------------------------
+
+TECH STACK
+
+Frontend:
+- React
+- Tailwind CSS
+
+Backend:
+- Java Spring Boot
+- REST APIs
+
+Libraries:
+- Jsoup (Web scraping & HTML parsing)
+- OpenAI API (AI text transformation)
+- Apache PDFBox / iText (PDF generation)
+
+Database:
+- MySQL / PostgreSQL
+
+--------------------------------------------------
+
+SYSTEM ARCHITECTURE
+
+Frontend (React)
+        ↓
+Spring Boot API
+        ↓
+Web Scraper (Jsoup)
+        ↓
+Content Cleaner
+        ↓
+AI Processing (LLM API)
+        ↓
+Paper Formatter
+        ↓
+PDF Generator
+        ↓
+Download / Save
+
+--------------------------------------------------
+
+TECHNICAL PAPER STRUCTURE (OUTPUT)
+
+1. Title
+2. Abstract
+3. Introduction
+4. Methodology
+5. Discussion / Analysis
+6. Conclusion
+7. References
+
+--------------------------------------------------
+
+BACKEND FLOW
+
+Step 1: Receive URL
+POST /generate-paper
+
+Request Body:
+{
+  "url": "https://example.com/article"
+}
+
+Step 2: Scrape Content
+- Fetch HTML
+- Extract title + body text
+
+Step 3: Clean Data
+- Remove scripts
+- Remove navigation text
+- Normalize paragraphs
+
+Step 4: Send to AI
+
+Prompt Example:
+"Convert the following article into a structured technical paper
+with Abstract, Introduction, Methodology, Discussion, Conclusion,
+and References."
+
+Step 5: Receive structured response
+
+Step 6: Generate PDF
+
+Step 7: Return download link
+
+--------------------------------------------------
+
+DATABASE SCHEMA
+
+TABLE: papers
+- id
+- url
+- title
+- generated_content
+- created_at
+- user_id
+
+--------------------------------------------------
+
+FEATURE ROADMAP
+
+PHASE 1 (MVP)
+- Paste URL
+- Generate technical paper
+- Download PDF
+
+PHASE 2
+- Citation styles (APA, IEEE)
+- Editing before download
+- Paper history dashboard
+
+PHASE 3 (ADVANCED)
+- Multiple links → single research paper
+- Literature review generator
+- AI citation finder
+- Plagiarism checking
+
+--------------------------------------------------
+
+PROJECT NAME IDEAS
+
+- Link2Paper AI
+- PaperForge
+- Scholarify
+- Web2Paper
+- ResearchGen
+- PaperSynth
+
+--------------------------------------------------
+
+VALUE FOR RESUME
+
+Demonstrates:
+- AI integration
+- Web scraping
+- Spring Boot backend
+- API design
+- Document generation
+- Real-world SaaS architecture
+
+--------------------------------------------------
+
+END OF PROJECT SPECIFICATION

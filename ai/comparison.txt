@@ -1,0 +1,145 @@
+PROJECT COMPARISON: PLAN vs CURRENT BUILD
+==========================================
+Date: 2026-03-02
+File: ai/comparison.txt
+
+This file compares the provided Project Plan (Academic-Style PDF Generator)
+against the actual project that has been built (Link2Paper).
+
+--------------------------------------------------
+
+1. BACKEND RUNTIME / LANGUAGE
+--------------------------------------------------
+Plan:    TypeScript running on Deno runtime
+Current: Java 17 with Spring Boot 3
+
+Impact: Completely different ecosystems.
+Deno = modern TS runtime, no node_modules, built-in security sandbox.
+Spring Boot = mature Java framework, larger ecosystem, easier MySQL/JPA integration.
+
+--------------------------------------------------
+
+2. FRONTEND FRAMEWORK
+--------------------------------------------------
+Plan:    SolidJS (reactive signals, fine-grained rendering)
+Current: React 18 (hooks-based, virtual DOM)
+
+Both use TailwindCSS for styling — so styling is aligned.
+SolidJS is lighter and faster; React has a larger library ecosystem.
+
+--------------------------------------------------
+
+3. AI / CONTENT TRANSFORMATION
+--------------------------------------------------
+Plan:    NOT MENTIONED — no LLM or AI model referenced.
+         The plan implies "transform content" but doesn't specify how.
+Current: Mistral AI (mistral-small-latest) via REST API.
+         Structured JSON paper (title, abstract, intro, methodology,
+         discussion, conclusion, references) returned by the model.
+
+This is a major addition in the current build not present in the plan.
+
+--------------------------------------------------
+
+4. PROCESSING MODEL (SYNC vs ASYNC)
+--------------------------------------------------
+Plan:    Asynchronous — job queue (BullMQ or custom message broker).
+         Target: 90% of requests < 5 min, remaining <= 1 hour.
+         Worker process picks up jobs and generates PDF in background.
+Current: Synchronous — HTTP request waits for the full pipeline
+         (scrape → clean → AI → PDF) and returns the PDF binary directly.
+
+This is a significant architectural difference.
+The plan's async model scales better for slow/large pages.
+The current sync model is simpler but may time out on slow AI responses.
+
+--------------------------------------------------
+
+5. PDF GENERATION LIBRARY
+--------------------------------------------------
+Plan:    Not specified (implied TS-compatible, e.g. pdfmake, pdf-lib, Puppeteer)
+Current: iText 7 (Java) — produces a styled A4 academic PDF with
+         Times New Roman fonts, section headings, justified body text,
+         coloured heading styles, and a line-separated abstract.
+
+--------------------------------------------------
+
+6. DATABASE
+--------------------------------------------------
+Plan:    Not mentioned / out of scope for first release.
+Current: MySQL (Aiven Cloud) with Spring Data JPA + Flyway migrations.
+         Papers table stores: url, title, all sections, references_json,
+         pdf_size_bytes, created_at, user_id (nullable, Phase 2).
+
+--------------------------------------------------
+
+7. JOB QUEUE / MESSAGE BROKER
+--------------------------------------------------
+Plan:    In-scope — BullMQ (Redis-backed) or custom broker.
+         Separate worker process consumes queue.
+Current: NOT IMPLEMENTED — no queue.
+         This is a missing feature vs the plan.
+
+--------------------------------------------------
+
+8. EMAIL NOTIFICATION
+--------------------------------------------------
+Plan:    Optional but in-scope — send download link after PDF is ready.
+Current: NOT IMPLEMENTED.
+         PDF is returned directly as HTTP binary download (synchronous).
+
+--------------------------------------------------
+
+9. DEPLOYMENT APPROACH
+--------------------------------------------------
+Plan:    Dockerfile + CI/CD pipeline mentioned.
+Current: Multi-stage Dockerfile (Node20 → JDK17 → JRE17 jammy).
+         React dist served from Spring Boot static/.
+         render.yaml for Render.com IaC deployment.
+         docker-compose.yml for local testing.
+Both are aligned on containerised Docker deployment.
+
+--------------------------------------------------
+
+10. TIMELINE ESTIMATE
+--------------------------------------------------
+Plan:    ~25 working days (~5 weeks) with a full team.
+Current: Built in a single session (hours).
+         Scope is somewhat smaller (no queue, no email).
+
+--------------------------------------------------
+
+SUMMARY TABLE
+--------------------------------------------------
+Feature                 | Plan          | Current Build
+------------------------|---------------|------------------
+Backend language        | TypeScript    | Java (Spring Boot)
+Runtime                 | Deno          | JVM 17
+Frontend framework      | SolidJS       | React 18
+CSS                     | TailwindCSS   | TailwindCSS ✓ Match
+AI content generation   | Not specified | Mistral AI
+PDF library             | Not specified | iText 7
+Processing model        | Asynchronous  | Synchronous
+Job queue               | BullMQ/custom | Not implemented
+Email notification      | Optional/yes  | Not implemented
+Database                | Not in scope  | MySQL (Aiven)
+Docker deployment       | Yes           | Yes ✓ Match
+CI/CD pipeline          | Mentioned     | render.yaml only
+Web scraping            | Yes           | Jsoup ✓ Match
+
+--------------------------------------------------
+
+GAPS IN CURRENT BUILD (vs Plan)
+--------------------------------------------------
+1. No asynchronous job queue — requests are processed synchronously.
+   Risk: AI requests may time out on slow URLs or heavy traffic.
+   Fix (Phase 2): Add Spring Batch or a Redis/BullMQ sidecar.
+
+2. No email notification — user must stay on the page for the download.
+   Fix (Phase 2): JavaMailSender with a callback URL.
+
+3. No CI/CD pipeline — only a render.yaml for manual deploy.
+   Fix (Phase 2): Add GitHub Actions workflow for auto-deploy to Render.
+
+--------------------------------------------------
+END OF COMPARISON

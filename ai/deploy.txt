@@ -1,0 +1,236 @@
+DEPLOY DOCKERIZED REACT + SPRING BOOT + MYSQL APP ON RENDER
+(SINGLE HOSTING SETUP – STEP BY STEP)
+
+--------------------------------------------------
+
+OVERVIEW
+
+You can deploy your full-stack application on Render using Docker.
+This allows you to host:
+
+- React Frontend
+- Spring Boot Backend
+- MySQL Database (Render Managed DB)
+
+All under one deployment URL.
+
+Recommended approach:
+Dockerized App + Render Managed MySQL Database.
+
+--------------------------------------------------
+
+ARCHITECTURE
+
+User Browser
+        ↓
+Render Web Service (Docker Container)
+        ↓
+Spring Boot Application
+        ↓
+Render MySQL Database
+
+Spring Boot serves the React build files.
+
+--------------------------------------------------
+
+STEP 1 — PROJECT STRUCTURE
+
+project-root/
+│
+├── backend/        (Spring Boot project)
+├── frontend/       (React project)
+├── Dockerfile
+└── README.md
+
+--------------------------------------------------
+
+STEP 2 — BUILD REACT APP
+
+Inside frontend folder:
+
+npm run build
+
+This creates:
+frontend/build/
+
+--------------------------------------------------
+
+STEP 3 — SERVE REACT USING SPRING BOOT
+
+Copy React build files into:
+
+backend/src/main/resources/static/
+
+Now Spring Boot serves React UI.
+
+Test locally:
+http://localhost:8080
+
+--------------------------------------------------
+
+STEP 4 — BUILD SPRING BOOT JAR
+
+Inside backend folder:
+
+mvn clean package
+
+Output file:
+backend/target/app.jar
+
+(rename jar if needed)
+
+--------------------------------------------------
+
+STEP 5 — CREATE DOCKERFILE (ROOT DIRECTORY)
+
+Create file: Dockerfile
+
+--------------------------------------------------
+Dockerfile content:
+
+FROM eclipse-temurin:17-jdk
+
+WORKDIR /app
+
+COPY backend/target/app.jar app.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["java","-jar","app.jar"]
+
+--------------------------------------------------
+
+STEP 6 — TEST DOCKER LOCALLY
+
+Build Docker image:
+
+docker build -t fullstack-app .
+
+Run container:
+
+docker run -p 8080:8080 fullstack-app
+
+Open browser:
+http://localhost:8080
+
+Verify:
+- React loads
+- API works
+
+--------------------------------------------------
+
+STEP 7 — PUSH PROJECT TO GITHUB
+
+git init
+git add .
+git commit -m "dockerized fullstack app"
+git push origin main
+
+--------------------------------------------------
+
+STEP 8 — CREATE MYSQL DATABASE ON RENDER
+
+1. Open Render Dashboard
+2. Click "New"
+3. Select Database (MySQL if available)
+4. Create database
+
+You will receive:
+
+DB_HOST
+DB_PORT
+DB_NAME
+DB_USER
+DB_PASSWORD
+
+--------------------------------------------------
+
+STEP 9 — CONFIGURE SPRING BOOT DATABASE
+
+Update application.properties:
+
+spring.datasource.url=${DB_URL}
+spring.datasource.username=${DB_USER}
+spring.datasource.password=${DB_PASSWORD}
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+--------------------------------------------------
+
+STEP 10 — CREATE WEB SERVICE ON RENDER
+
+1. Go to Render Dashboard
+2. Click "New"
+3. Select "Web Service"
+4. Connect GitHub repository
+5. Environment: Docker
+
+Render automatically detects Dockerfile.
+
+--------------------------------------------------
+
+STEP 11 — ADD ENVIRONMENT VARIABLES
+
+In Render → Environment section add:
+
+DB_URL=jdbc:mysql://hostname:3306/dbname
+DB_USER=username
+DB_PASSWORD=password
+
+Save settings.
+
+--------------------------------------------------
+
+STEP 12 — DEPLOY APPLICATION
+
+Click:
+Create Web Service
+
+Render will:
+- Build Docker image
+- Start container
+- Assign public URL
+
+Example:
+https://your-app.onrender.com
+
+--------------------------------------------------
+
+FINAL RESULT
+
+You now have:
+
+✔ React frontend hosted
+✔ Spring Boot backend hosted
+✔ Cloud MySQL database
+✔ Docker container deployment
+✔ Single public URL
+
+--------------------------------------------------
+
+RESUME DESCRIPTION (OPTIONAL)
+
+Containerized a full-stack application using Docker and deployed it on
+Render with integrated React frontend, Spring Boot backend, and managed
+cloud MySQL database.
+
+--------------------------------------------------
+
+COMMON ISSUES
+
+React not loading:
+→ Ensure build files copied to static folder.
+
+Database connection error:
+→ Verify ENV variables and DB credentials.
+
+App crashes:
+→ Check Render logs.
+
+Slow first request:
+→ Free tier services sleep after inactivity.
+
+--------------------------------------------------
+
+END OF GUIDE

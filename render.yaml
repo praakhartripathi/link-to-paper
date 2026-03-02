@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: link2paper
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: MISTRAL_API_KEY
+        sync: false
+      - key: PORT
+        value: 8080
