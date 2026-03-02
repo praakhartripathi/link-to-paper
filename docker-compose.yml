@@ -1,8 +1,48 @@
 services:
-  app:
-    build: .
+  mysql:
+    image: mysql:8.0
+    container_name: web-to-pdf-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: link2paper
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: web-to-pdf-backend
+    restart: unless-stopped
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/link2paper?useSSL=false&serverTimezone=UTC
+      DB_USER: root
+      DB_PASSWORD: root
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
+    depends_on:
+      mysql:
+        condition: service_healthy
     ports:
       - "8080:8080"
-    env_file:
-      - .env
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: web-to-pdf-frontend
     restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  mysql_data:

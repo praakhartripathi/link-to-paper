@@ -1,7 +1,9 @@
 /**
  * api.js — wraps the Spring Boot backend
  */
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
+// Use relative path so the Docker build works on any host/port.
+// When running `npm run dev` separately, set VITE_API_BASE_URL=http://localhost:8080/api in frontend/.env.local
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 /**
  * Sends a URL to the backend and receives a PDF blob.
