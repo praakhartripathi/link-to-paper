@@ -44,8 +44,13 @@ public class AIService {
             return mockPaper(pageTitle);
         }
         log.info("Calling Mistral AI (model={}) for: {}", model, pageTitle);
-        String responseJson = callMistral(buildPrompt(pageTitle, cleanedContent));
-        return parsePaperResponse(responseJson, pageTitle);
+        try {
+            String responseJson = callMistral(buildPrompt(pageTitle, cleanedContent));
+            return parsePaperResponse(responseJson, pageTitle);
+        } catch (Exception e) {
+            log.error("Mistral call failed, returning mock paper. Cause: {}", e.getMessage());
+            return mockPaper(pageTitle);
+        }
     }
 
     private String buildPrompt(String title, String content) {
